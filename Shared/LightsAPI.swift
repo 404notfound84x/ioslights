@@ -50,7 +50,7 @@ enum JSONValue: Codable, Equatable {
 }
 
 /// One adjustable control (slider or color) of an effect.
-struct Control: Decodable, Identifiable, Equatable {
+struct EffectControl: Decodable, Identifiable, Equatable {
     let key: String
     let label: String
     let type: String
@@ -70,7 +70,7 @@ struct Control: Decodable, Identifiable, Equatable {
 
 struct PresetInfo: Decodable {
     let label: String
-    let params: [Control]
+    let params: [EffectControl]
 }
 
 struct LightsState: Decodable {
@@ -98,7 +98,7 @@ struct LightsState: Decodable {
     let mode: Mode?
     let saved: [String]
     let status: String?
-    let controls: [Control]?
+    let controls: [EffectControl]?
     let canUndo: Bool?
     let fadeMs: Double?
     let smoothMs: Double?
@@ -111,6 +111,7 @@ struct LightsState: Decodable {
     let pixels: Int?
     let version: String?
     let presets: [String: PresetInfo]?
+    let effectError: String?
 
     enum CodingKeys: String, CodingKey {
         case power, brightness, mode, saved, status, controls, fps, pixels, version, presets
@@ -122,6 +123,7 @@ struct LightsState: Decodable {
         case idleTimeout = "idle_timeout"
         case fpsActual = "fps_actual"
         case controllerFps = "controller_fps"
+        case effectError = "effect_error"
     }
 }
 

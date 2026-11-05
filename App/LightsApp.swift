@@ -45,7 +45,7 @@ extension Color {
 struct PresetItem: Identifiable {
     let key: String
     let label: String
-    let params: [Control]
+    let params: [EffectControl]
     var id: String { key }
 }
 
@@ -80,13 +80,13 @@ final class LightsModel: ObservableObject {
     var canUndo: Bool { state?.canUndo ?? false }
     var currentPreset: String? { kind == "preset" ? state?.mode?.data?.name : nil }
 
-    var currentControls: [Control] {
+    var currentControls: [EffectControl] {
         if kind == "code" { return state?.controls ?? [] }
         if let name = currentPreset { return presets.first(where: { $0.key == name })?.params ?? [] }
         return []
     }
 
-    func value(for control: Control) -> JSONValue {
+    func value(for control: EffectControl) -> JSONValue {
         controlValues[control.key] ?? control.defaultValue ?? .null
     }
 
@@ -210,7 +210,7 @@ final class LightsModel: ObservableObject {
         }
     }
 
-    func setControl(_ control: Control, _ value: JSONValue) {
+    func setControl(_ control: EffectControl, _ value: JSONValue) {
         controlValues[control.key] = value
         lastControlEdit = Date()
         if let name = currentPreset {

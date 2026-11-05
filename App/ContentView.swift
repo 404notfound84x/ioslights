@@ -53,6 +53,12 @@ struct Page<Content: View>: View {
             ScrollView {
                 VStack(spacing: 16) {
                     StripView(colors: m.colors)
+                    if let crash = m.state?.effectError, !crash.isEmpty {
+                        Text(crash)
+                            .font(.footnote)
+                            .foregroundStyle(Color.orange)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                     if let problem = m.problem {
                         Text(problem)
                             .font(.footnote)
@@ -256,7 +262,7 @@ struct ControlsList: View {
 
 struct ControlRow: View {
     @EnvironmentObject var m: LightsModel
-    let control: Control
+    let control: EffectControl
 
     var body: some View {
         if control.isColor {
@@ -469,7 +475,7 @@ struct NowTile: View {
 struct BrightnessPill: View {
     @Binding var value: Double
     var onChange: (Bool) -> Void
-    @State var startValue: Double?
+    @State var startValue: Double? = nil
 
     var body: some View {
         GeometryReader { geo in
@@ -855,8 +861,7 @@ struct SettingsView: View {
                     Section {
                         LabeledContent("LED Studio", value: s.version ?? "?")
                         LabeledContent("Controller", value: s.status ?? "?")
-                        LabeledContent("Frame rate", value: String(format: "%.0f sent · %@ shown", s.fpsActual ?? 0,
-                                                                   s.controllerFps.map { String(format: "%.0f", $0) } ?? "–"))
+                        LabeledContent("Frame rate", value: "\(Int(s.fpsActual ?? 0)) sent · \(s.controllerFps.map { String(Int($0)) } ?? "–") shown")
                         LabeledContent("Pixels", value: "\(s.pixels ?? 0)")
                     } header: {
                         Text("Status")
