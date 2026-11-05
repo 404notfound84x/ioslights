@@ -4,9 +4,9 @@ on:
   push:
   workflow_dispatch:
     inputs:
-      server:
-        description: "LED Studio address baked into the app, widgets and Control Center"
-        default: "http://lights.local"
+      servers:
+        description: "LED Studio addresses to try, in order (comma separated). Leave empty for the built-in list."
+        default: ""
 
 jobs:
   build:
@@ -27,18 +27,40 @@ jobs:
           xcodebuild -project Lights.xcodeproj -target Lights -configuration Release -sdk iphoneos \
             SYMROOT="$PWD/build" \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
-            LIGHTS_SERVER="${{ github.event.inputs.server || 'http://lights.local' }}" \
-            build | grep -E "error:|warning: .*(Intents|Widgets|ContentView|LightsApp|LightsAPI)|BUILD|Compiling" || true
-          test -d build/Release-iphoneos/Lights.app
+            ${{ github.event.inputs.servers && format('LIGHTS_SERVERS="{0}"', github.event.inputs.servers) || '' }} \
+            build > build.log 2>&1 && ok=1 || ok=0
+          echo "================ errors ================"
+          grep -E "error:" build.log | sort -u | head -60 || true
+          echo "========================================"
+          tail -n 5 build.log
+          if [ "$ok" != 1 ]; then echo "::error::The build failed. The lines with 'error:' above say why."; exit 1; fi
+
+      - name: Check the app is complete
+        run: |
+          APP=build/Release-iphoneos/Lights.app
+          test -f "$APP/Info.plist" || { echo "::error::Lights.app has no Info.plist"; exit 1; }
+          test -f "$APP/Lights" || { echo "::error::Lights.app has no program inside"; exit 1; }
+          ls "$APP/PlugIns"
 
       - name: Package IPA
         run: |
-          mkdir -p Payload
-          cp -R build/Release-iphoneos/Lights.app Payload/
-          echo "Embedded extensions:"; ls Payload/Lights.app/PlugIns
-          zip -qry Lights.ipa Payload
+          rm -rf Payload && mkdir Payload
+          ditto build/Release-iphoneos/Lights.app Payload/Lights.app
+          NAME="Lights-${{ github.run_number }}.ipa"
+          ditto -c -k --sequesterRsrc --keepParent Payload "$NAME"
+          echo "IPA_NAME=$NAME" >> "$GITHUB_ENV"
+          echo "Inside $NAME:"
+          unzip -l "$NAME" | grep -E "Payload/Lights.app/(Info.plist|Lights)$|LightsWidgets.appex/Info.plist$"
+          unzip -l "$NAME" | grep -q "Payload/Lights.app/Info.plist" || { echo "::error::IPA is missing Info.plist"; exit 1; }
+          ls -l "$NAME"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Lights-ipa
-          path: Lights.ipa
+          name: Lights-ipa-${{ github.run_number }}
+          path: ${{ env.IPA_NAME }}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-log
+          path: build.log
