@@ -29,13 +29,19 @@ struct LightsShortcuts: AppShortcutsProvider {
         )
         AppShortcut(
             intent: ColorIntent(),
-            phrases: ["Turn \(.applicationName) \(\.$color)", "Make \(.applicationName) \(\.$color)"],
+            phrases: ["Turn \(.applicationName) \(\.$color)", "Make \(.applicationName) \(\.$color)", "Make my \(.applicationName) \(\.$color)", "Set the \(.applicationName) color to \(\.$color)"],
             shortTitle: "Color",
             systemImageName: "paintpalette"
         )
         AppShortcut(
+            intent: PresetIntent(),
+            phrases: ["\(.applicationName) \(\.$effect)", "Play \(\.$effect) on \(.applicationName)", "Put \(\.$effect) on the \(.applicationName)"],
+            shortTitle: "Effect",
+            systemImageName: "wand.and.stars"
+        )
+        AppShortcut(
             intent: PlaySavedIntent(),
-            phrases: ["Play \(\.$effect) on \(.applicationName)", "\(.applicationName) play \(\.$effect)"],
+            phrases: ["Play my \(\.$effect) on \(.applicationName)", "\(.applicationName) play \(\.$effect)", "Saved \(\.$effect) on \(.applicationName)"],
             shortTitle: "Play Saved",
             systemImageName: "play.circle"
         )

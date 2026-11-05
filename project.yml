@@ -9,9 +9,9 @@ settings:
     MARKETING_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "1"
     TARGETED_DEVICE_FAMILY: "1"
-    # The LED Studio address baked into the app, widgets and Control Center buttons.
-    # The GitHub build can override it (Actions -> Build Lights -> Run workflow -> server).
-    LIGHTS_SERVER: "http://lights.local"
+    # LED Studio addresses baked into the app, widgets and Control Center buttons, tried in this order.
+    # The GitHub build can override them (Actions -> Build Lights -> Run workflow -> servers).
+    LIGHTS_SERVERS: "http://lights.local, http://192.168.50.111, http://192.168.50.111:8000, http://192.168.50.65, http://192.168.50.65:8000"
 targets:
   Lights:
     type: application
@@ -25,7 +25,7 @@ targets:
         CFBundleDisplayName: Lights
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
-        LightsServer: $(LIGHTS_SERVER)
+        LightsServers: $(LIGHTS_SERVERS)
         INAlternativeAppNames:
           - INAlternativeAppName: Room Lights
           - INAlternativeAppName: LED Studio
@@ -55,7 +55,7 @@ targets:
         CFBundleDisplayName: Lights
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
-        LightsServer: $(LIGHTS_SERVER)
+        LightsServers: $(LIGHTS_SERVERS)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
         NSAppTransportSecurity:

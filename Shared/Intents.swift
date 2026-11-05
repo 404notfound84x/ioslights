@@ -76,6 +76,31 @@ enum LightColor: String, AppEnum, CaseIterable {
     }
 }
 
+enum LightEffect: String, AppEnum, CaseIterable {
+    case rainbow, flow, breathe, fire, ocean, sunset, aurora, twinkle, comet, candle
+
+    static let typeDisplayRepresentation: TypeDisplayRepresentation = "Effect"
+    static let caseDisplayRepresentations: [LightEffect: DisplayRepresentation] = [
+        .rainbow: "Rainbow",
+        .flow: "Gradient Flow",
+        .breathe: "Breathe",
+        .fire: "Fire",
+        .ocean: "Ocean",
+        .sunset: "Sunset",
+        .aurora: "Aurora",
+        .twinkle: "Twinkle",
+        .comet: "Comet",
+        .candle: "Candle",
+    ]
+
+    var title: String {
+        switch self {
+        case .flow: return "gradient flow"
+        default: return rawValue
+        }
+    }
+}
+
 struct SavedEffect: AppEntity {
     let id: String
 
@@ -228,6 +253,27 @@ struct ColorIntent: AppIntent {
         refreshWidgets()
         let name = color.title
         return .result(dialog: "Lights set to \(name).")
+    }
+}
+
+struct PresetIntent: AppIntent {
+    static let title: LocalizedStringResource = "Play Lights Effect"
+
+    @Parameter(title: "Effect")
+    var effect: LightEffect
+
+    init() {}
+
+    init(effect: LightEffect) {
+        self.effect = effect
+    }
+
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        try await LightsAPI.preset(effect.rawValue)
+        try await LightsAPI.setPower(true)
+        refreshWidgets()
+        let name = effect.title
+        return .result(dialog: "Playing \(name).")
     }
 }
 

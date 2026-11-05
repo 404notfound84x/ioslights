@@ -1,35 +1,39 @@
 Lights: an iPhone app for LED Studio
 =====================================
 
-What it has
-  App               big brightness bar, power, live strip preview, scenes, colors, AI "make an effect", saved effects
-  Siri              "Turn off Lights", "Lights movie mode", "Set Lights to evening", "Turn Lights blue",
-                    "Play Cozy evening on Lights", "Set Lights brightness", "Make an effect on Lights"
-                    (These also appear in the Shortcuts app for automations: alarm, sunset, arriving home...)
-  Widgets           small: power + dimmer/brighter    medium: that + 4 scenes    Lock Screen: power
-  Control Center    "Room Lights" on/off toggle and a "Movie Mode" button (also usable on the Action button)
+What it has (same layout as the LED Studio page)
+  Home       big brightness bar, power, what's playing, scenes, solid colors and gradients
+  Effects    the built-in effects, with sliders/colors for the one that's playing
+  Create     AI: describe an effect (with its own controls or as layers), its controls,
+             "not quite right? say what to change", undo
+  Saved      save what's playing, play or delete saved effects
+  Settings   which LED Studio it found, the address list, fade/smoothing/frame rate,
+             the disconnect fallback color, status
 
-It talks to LED Studio 4.1 or newer (it needs the new /api/scene endpoint), only on your home Wi-Fi.
+  Siri       "Lights fire", "Lights movie mode", "Turn Lights blue", "Make my Lights red",
+             "Play my Cozy evening on Lights", "Set Lights brightness", "Make an effect on Lights"
+             For plain light commands without saying "Lights" ("make my lights red", "dim the bedroom
+             lights to 20%"), use the HomeKit bridge in LED Studio (homekit_bridge.py). See below.
+  Widgets    small: power + dimmer/brighter    medium: that + 4 scenes    Lock Screen: power
+  Control Center   "Room Lights" toggle and "Movie Mode" button (also for the Action button)
+
+Finding LED Studio
+  It tries these in order and uses the first one that answers (all at once, so it's quick):
+    http://lights.local
+    http://192.168.50.111      http://192.168.50.111:8000      (server)
+    http://192.168.50.65       http://192.168.50.65:8000       (PC)
+  If the one it's using stops answering, it looks again by itself. Change the list in the app's
+  Settings (the app and Siri use that), or in project.yml / the build's "servers" box (widgets too).
 
 Build it (no Mac needed)
-  1. Make a new GitHub repo and upload everything in this folder, including the hidden .github folder.
-     (Easiest: GitHub Desktop, or "Add file -> Upload files" and drag the folder contents in.)
-  2. Every push builds it. To set the address: Actions -> Build Lights -> Run workflow -> server.
-     Default is http://lights.local. If you haven't set that name up yet, use your server's address,
-     e.g. http://192.168.50.111:8000 (whatever you type into Safari to open LED Studio).
-  3. When the run finishes, open it and download "Lights-ipa" at the bottom. Unzip it to get Lights.ipa.
-  4. Install Lights.ipa with the same PC app you used last time.
+  1. Upload everything in this folder to your GitHub repo (replace the old files), including .github.
+  2. Actions -> Build Lights -> Run workflow. Leave "servers" empty to use the list above.
+  3. Download "Lights-ipa" from the finished run, unzip, install Lights.ipa with your PC app.
+  If it fails: open the run -> build -> Build step, copy the lines with "error:".
 
-If the build fails, open the failed run, click the "Build" step and copy the lines with "error:".
+Needs LED Studio 4.1 or newer.
 
 First run
-  - Open the app once. Allow "Local Network" when it asks; without it nothing can reach LED Studio.
-  - Long-press the home screen -> Edit -> Add Widget -> Lights.
-  - Control Center: swipe down -> Edit (top left) -> Add a Control -> Lights.
-  - Siri learns the app's phrases on its own; give it a minute after the first launch.
-
-Notes
-  - The app's Settings (gear icon) can change the address for the app and Siri. Widgets and Control Center
-    always use the address it was built with, so rebuild if that changes.
-  - If Siri sends "turn off lights" to the Home app instead, say "Room Lights" (e.g. "Turn off Room Lights").
-  - Making an AI effect through Siri takes as long as it does in the app (5-15 s with the 27B).
+  - Allow "Local Network" when it asks.
+  - Widgets: long-press the home screen -> Edit -> Add Widget -> Lights.
+  - Control Center: swipe down -> Edit -> Add a Control -> Lights.
