@@ -792,98 +792,148 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    LabeledContent("Connected to", value: m.server ?? "Not found")
-                    Button(finding ? "Looking…" : "Find LED Studio again") {
-                        finding = true
-                        Task {
-                            await m.reconnect()
-                            finding = false
-                        }
-                    }
-                    .disabled(finding)
-                    if let server = m.server, let url = URL(string: server) {
-                        Link("Open LED Studio in Safari", destination: url)
-                    }
-                } header: {
-                    Text("Connection")
-                }
+            syncedForm
+                .navigationTitle("Settings")
+        }
+    }
 
-                Section {
-                    TextField(LightsAPI.builtInServers.joined(separator: "\n"), text: $serversText, axis: .vertical)
-                        .lineLimit(3...8)
-                        .keyboardType(.URL)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .font(.system(.footnote, design: .monospaced))
-                } header: {
-                    Text("Addresses to try, in order")
-                } footer: {
-                    Text("One per line. The first one that answers wins. Leave it empty to use the built-in list shown in grey. Widgets and Control Center always use the built-in list.")
-                }
+    // Split into small pieces so the Swift compiler can type-check each one quickly.
 
-                Section {
-                    SliderRow(label: "Fade between effects", value: $fade, range: 0...3, step: 0.1,
-                              format: { $0 == 0 ? "Off" : String(format: "%.1f s", $0) })
-                    SliderRow(label: "Smoothing", value: $smooth, range: 0...2, step: 0.05,
-                              format: { $0 == 0 ? "Off" : String(format: "%.2f s", $0) })
-                    SliderRow(label: "Frame rate", value: $fps, range: 10...60, step: 1,
-                              format: { "\(Int($0)) fps" })
-                } header: {
-                    Text("Lights")
-                } footer: {
-                    Text("Smoothing glides sliders, colors and brightness instead of jumping.")
-                }
+    private var form: some View {
+        Form {
+            connectionSection
+            addressSection
+            lightsSection
+            fallbackSection
+            siriSection
+            statusSection
+        }
+        .scrollContentBackground(.hidden)
+        .background(Theme.background.ignoresSafeArea())
+    }
 
-                Section {
-                    ColorPicker("Color", selection: $idleColor, supportsOpacity: false)
-                    SliderRow(label: "Brightness", value: $idleBri, range: 0...100, step: 1,
-                              format: { "\(Int($0))%" })
-                    SliderRow(label: "Wait before fading", value: $idleWait, range: 0.5...15, step: 0.5,
-                              format: { String(format: "%.1f s", $0) })
-                } header: {
-                    Text("If LED Studio disconnects")
-                } footer: {
-                    Text("The controller fades to this and holds it until LED Studio comes back.")
-                }
-
-                Section {
-                    Text("For everyday light commands (“make my lights red”, “dim the bedroom lights”), add the lights to the Home app with LED Studio's HomeKit bridge. This app adds effects, scenes and AI:")
-                    Text("“Lights fire” · “Lights movie mode” · “Play my Cozy evening on Lights” · “Make an effect on Lights” · “Set Lights brightness”")
-                        .foregroundStyle(.secondary)
-                } header: {
-                    Text("Siri")
-                }
-                .font(.footnote)
-
-                if let s = m.state {
-                    Section {
-                        LabeledContent("LED Studio", value: s.version ?? "?")
-                        LabeledContent("Controller", value: s.status ?? "?")
-                        LabeledContent("Frame rate", value: "\(Int(s.fpsActual ?? 0)) sent · \(s.controllerFps.map { String(Int($0)) } ?? "–") shown")
-                        LabeledContent("Pixels", value: "\(s.pixels ?? 0)")
-                    } header: {
-                        Text("Status")
-                    }
-                    .font(.footnote)
-                }
-            }
-            .scrollContentBackground(.hidden)
-            .background(Theme.background.ignoresSafeArea())
-            .navigationTitle("Settings")
+    private var syncedForm: some View {
+        let base = form
             .onAppear(perform: load)
             .onChange(of: m.state?.version) { _, _ in load() }
-            .onChange(of: serversText) { _, _ in
-                m.debounce("servers", 800) { await m.reconnect() }
-            }
+            .onChange(of: serversText) { _, _ in reconnectSoon() }
+        return base
             .onChange(of: fade) { _, v in send("fade_ms", Int(v * 1000)) }
             .onChange(of: smooth) { _, v in send("smooth_ms", Int(v * 1000)) }
             .onChange(of: fps) { _, v in send("fps", Int(v)) }
             .onChange(of: idleColor) { _, v in send("idle_color", v.hexString()) }
             .onChange(of: idleBri) { _, v in send("idle_bri", Int(v)) }
             .onChange(of: idleWait) { _, v in send("idle_timeout", v) }
+    }
+
+    private var connectionSection: some View {
+        Section {
+            LabeledContent("Connected to", value: m.server ?? "Not found")
+            Button(finding ? "Looking…" : "Find LED Studio again", action: findAgain)
+                .disabled(finding)
+            if let url = serverURL {
+                Link("Open LED Studio in Safari", destination: url)
+            }
+        } header: {
+            Text("Connection")
         }
+    }
+
+    private var serverURL: URL? {
+        guard let server = m.server else { return nil }
+        return URL(string: server)
+    }
+
+    private var addressSection: some View {
+        Section {
+            TextField(LightsAPI.builtInServers.joined(separator: "\n"), text: $serversText, axis: .vertical)
+                .lineLimit(3...8)
+                .keyboardType(.URL)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .font(.system(.footnote, design: .monospaced))
+        } header: {
+            Text("Addresses to try, in order")
+        } footer: {
+            Text("One per line. The first one that answers wins. Leave it empty to use the built-in list shown in grey. Widgets and Control Center always use the built-in list.")
+        }
+    }
+
+    private var lightsSection: some View {
+        Section {
+            SliderRow(label: "Fade between effects", value: $fade, range: 0...3, step: 0.1, format: Self.secondsOrOff1)
+            SliderRow(label: "Smoothing", value: $smooth, range: 0...2, step: 0.05, format: Self.secondsOrOff2)
+            SliderRow(label: "Frame rate", value: $fps, range: 10...60, step: 1, format: Self.fpsText)
+        } header: {
+            Text("Lights")
+        } footer: {
+            Text("Smoothing glides sliders, colors and brightness instead of jumping.")
+        }
+    }
+
+    private var fallbackSection: some View {
+        Section {
+            ColorPicker("Color", selection: $idleColor, supportsOpacity: false)
+            SliderRow(label: "Brightness", value: $idleBri, range: 0...100, step: 1, format: Self.percentText)
+            SliderRow(label: "Wait before fading", value: $idleWait, range: 0.5...15, step: 0.5, format: Self.secondsText)
+        } header: {
+            Text("If LED Studio disconnects")
+        } footer: {
+            Text("The controller fades to this and holds it until LED Studio comes back.")
+        }
+    }
+
+    private var siriSection: some View {
+        Section {
+            Text("For everyday light commands (“make my lights red”, “dim the bedroom lights”), add the lights to the Home app with LED Studio's HomeKit bridge. This app adds effects, scenes and AI:")
+            Text("“Lights fire” · “Lights movie mode” · “Play my Cozy evening on Lights” · “Make an effect on Lights” · “Set Lights brightness”")
+                .foregroundStyle(.secondary)
+        } header: {
+            Text("Siri")
+        }
+        .font(.footnote)
+    }
+
+    @ViewBuilder
+    private var statusSection: some View {
+        if let s = m.state {
+            Section {
+                LabeledContent("LED Studio", value: s.version ?? "?")
+                LabeledContent("Controller", value: s.status ?? "?")
+                LabeledContent("Frame rate", value: Self.frameRateText(s))
+                LabeledContent("Pixels", value: String(s.pixels ?? 0))
+            } header: {
+                Text("Status")
+            }
+            .font(.footnote)
+        }
+    }
+
+    // MARK: helpers
+
+    static func secondsOrOff1(_ v: Double) -> String { v == 0 ? "Off" : String(format: "%.1f s", v) }
+    static func secondsOrOff2(_ v: Double) -> String { v == 0 ? "Off" : String(format: "%.2f s", v) }
+    static func secondsText(_ v: Double) -> String { String(format: "%.1f s", v) }
+    static func percentText(_ v: Double) -> String { String(Int(v)) + "%" }
+    static func fpsText(_ v: Double) -> String { String(Int(v)) + " fps" }
+
+    static func frameRateText(_ s: LightsState) -> String {
+        let sent = String(Int(s.fpsActual ?? 0))
+        let shown: String = s.controllerFps.map { String(Int($0)) } ?? "–"
+        return sent + " sent · " + shown + " shown"
+    }
+
+    private func findAgain() {
+        finding = true
+        Task {
+            await m.reconnect()
+            finding = false
+        }
+    }
+
+    private func reconnectSoon() {
+        let model = m
+        model.debounce("servers", 800) { await model.reconnect() }
     }
 
     private func load() {
