@@ -813,17 +813,25 @@ struct SettingsView: View {
     }
 
     private var syncedForm: some View {
-        let base = form
-            .onAppear(perform: load)
-            .onChange(of: m.state?.version) { _, _ in load() }
-            .onChange(of: serversText) { _, _ in reconnectSoon() }
-        return base
-            .onChange(of: fade) { _, v in send("fade_ms", Int(v * 1000)) }
-            .onChange(of: smooth) { _, v in send("smooth_ms", Int(v * 1000)) }
-            .onChange(of: fps) { _, v in send("fps", Int(v)) }
-            .onChange(of: idleColor) { _, v in send("idle_color", v.hexString()) }
-            .onChange(of: idleBri) { _, v in send("idle_bri", Int(v)) }
-            .onChange(of: idleWait) { _, v in send("idle_timeout", v) }
+        lightSync(fallbackSync(connectionSync(form)))
+    }
+
+    private func connectionSync<V: View>(_ v: V) -> some View {
+        v.onAppear(perform: load)
+            .onChange(of: m.state?.version) { load() }
+            .onChange(of: serversText) { reconnectSoon() }
+    }
+
+    private func lightSync<V: View>(_ v: V) -> some View {
+        v.onChange(of: fade) { sendMilliseconds("fade_ms", fade) }
+            .onChange(of: smooth) { sendMilliseconds("smooth_ms", smooth) }
+            .onChange(of: fps) { sendWhole("fps", fps) }
+    }
+
+    private func fallbackSync<V: View>(_ v: V) -> some View {
+        v.onChange(of: idleColor) { sendText("idle_color", idleColor.hexString()) }
+            .onChange(of: idleBri) { sendWhole("idle_bri", idleBri) }
+            .onChange(of: idleWait) { sendNumber("idle_timeout", idleWait) }
     }
 
     private var connectionSection: some View {
@@ -949,6 +957,25 @@ struct SettingsView: View {
 
     private func send(_ key: String, _ value: Any) {
         guard loaded else { return }
-        m.debounce("setting-" + key, 300) { try await LightsAPI.settings([key: value]) }
+        let body: [String: Any] = [key: value]
+        m.debounce("setting-" + key, 300) { try await LightsAPI.settings(body) }
+    }
+
+    private func sendMilliseconds(_ key: String, _ seconds: Double) {
+        let ms: Int = Int((seconds * 1000).rounded())
+        send(key, ms)
+    }
+
+    private func sendWhole(_ key: String, _ value: Double) {
+        let whole: Int = Int(value.rounded())
+        send(key, whole)
+    }
+
+    private func sendNumber(_ key: String, _ value: Double) {
+        send(key, value)
+    }
+
+    private func sendText(_ key: String, _ value: String) {
+        send(key, value)
     }
 }
